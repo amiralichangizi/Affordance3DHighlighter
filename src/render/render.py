@@ -7,7 +7,7 @@ import torch
 import numpy as np
 
 
-class Renderer():
+class Renderer:
 
     def __init__(self, mesh='sample.obj',
                  lights=torch.tensor([1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]),

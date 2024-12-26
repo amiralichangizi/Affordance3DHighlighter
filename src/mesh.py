@@ -51,8 +51,8 @@ class Mesh():
         return mesh
 
     def set_mesh_color(self,color):
-        self.texture_map = utils.get_texture_map_from_color(self,color)
-        self.face_attributes = utils.get_face_attributes_from_color(self,color)
+        self.texture_map = utils.get_texture_map_from_color(self, color)
+        self.face_attributes = utils.get_face_attributes_from_color(self, color)
 
     def set_image_texture(self,texture_map,inplace=True):
 
