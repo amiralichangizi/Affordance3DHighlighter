@@ -3,8 +3,7 @@ import kaolin as kal
 import kaolin.ops.mesh
 import numpy as np
 from src.Normalization import MeshNormalizer
-from src.mesh import Mesh
-from pytorch3d.structures import Pointclouds
+
 
 if torch.cuda.is_available():
     device = torch.device("cuda:0")
@@ -95,51 +94,3 @@ class FourierFeatureTransform(torch.nn.Module):
 
         res = 2 * np.pi * res
         return torch.cat([x, torch.sin(res), torch.cos(res)], dim=1)
-
-def load_3d_data(file_path, num_points=10000, device="cuda"):
-    """
-    Loads 3D data as PyTorch3D Pointclouds from either NPZ point cloud or OBJ mesh.
-
-    Args:
-        file_path: Path to either .npz point cloud or .obj mesh file
-        num_points: Number of points to sample if loading from mesh
-        device: Device to load data on
-
-    Returns:
-        Pointclouds object containing points and features
-    """
-    file_ext = file_path.split('.')[-1].lower()
-
-    if file_ext == 'npz':
-        # Load NPZ point cloud directly like in the example
-        pointcloud = np.load(file_path)
-        verts = torch.Tensor(pointcloud['verts']).to(device)
-        rgb = torch.Tensor(pointcloud['rgb']).to(device)
-
-        # Subsample if needed
-        if len(verts) > num_points:
-            idx = torch.randperm(len(verts))[:num_points]
-            verts = verts[idx]
-            rgb = rgb[idx]
-
-        # Return both the points tensor and the Pointclouds object
-        point_cloud = Pointclouds(points=[verts], features=[rgb])
-        return verts, point_cloud  # Return both
-
-    elif file_ext == 'obj':
-        # Load mesh and sample points
-        mesh = Mesh(file_path)
-        vertices = mesh.vertices
-
-        # Sample random points
-        idx = torch.randperm(vertices.shape[0])[:num_points]
-        points = vertices[idx].to(device)
-
-        # Initialize with gray color
-        colors = torch.ones_like(points) * 0.7
-
-        return Pointclouds(points=[points], features=[colors])
-
-    else:
-        raise ValueError(f"Unsupported file format: {file_ext}. Only .npz and .obj are supported.")
-
