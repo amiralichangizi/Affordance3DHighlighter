@@ -1,10 +1,12 @@
 import kaolin as kal
 import torch
-import utils
-from utils import device
+
 import copy
 import numpy as np
 import PIL
+
+from src.utils import device
+
 
 class Mesh():
     def __init__(self,obj_path,color=torch.tensor([0.0,0.0,1.0])):
