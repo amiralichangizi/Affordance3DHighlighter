@@ -1,8 +1,7 @@
-from mesh import Mesh
 import kaolin as kal
-from utils import get_camera_from_view2
+from src.utils import get_camera_from_view2
 import matplotlib.pyplot as plt
-from utils import device
+from src.utils import device
 import torch
 import numpy as np
 

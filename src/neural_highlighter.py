@@ -1,5 +1,7 @@
 import torch.nn as nn
-from utils import FourierFeatureTransform
+
+from src.utils import FourierFeatureTransform
+
 
 class NeuralHighlighter(nn.Module):
     def __init__(self, depth, width, out_dim, input_dim=3, positional_encoding=False, sigma=5.0):
