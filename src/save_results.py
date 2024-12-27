@@ -36,6 +36,7 @@ def save_results(net, points, point_cloud, prompt, output_dir, renderer,device):
         prompt: Text prompt used
         output_dir: Directory to save results
         renderer: Point cloud renderer
+        device: GPU or CPU
     """
     with torch.no_grad():
         # Get highlight predictions
