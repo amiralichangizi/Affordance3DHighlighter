@@ -66,6 +66,12 @@ class MultiViewPointCloudRenderer:
             'X_-90deg': (base_dist, base_elev - 90, base_azim),
         }
 
+    @staticmethod
+    def create_point_cloud(points, colors=None):
+        if colors is None:
+            colors = torch.ones_like(points)  # Default white color
+        return Pointclouds(points=[points], features=[colors])
+
     def get_center_point(self, point_cloud):
         """Calculate the center point of the point cloud"""
         points = point_cloud.points_packed()
