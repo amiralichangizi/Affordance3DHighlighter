@@ -25,7 +25,7 @@ def save_renders(dir, i, rendered_images, name=None):
         torchvision.utils.save_image(rendered_images, os.path.join(render_dir, f'iter_{i}.jpg'))
 
 
-def save_results(net, points, point_cloud, prompt, output_dir, renderer):
+def save_results(net, points, point_cloud, prompt, output_dir, renderer,device):
     """
     Saves the results of the highlighting process with proper image formatting.
 
@@ -46,14 +46,17 @@ def save_results(net, points, point_cloud, prompt, output_dir, renderer):
         base_color = torch.tensor([180 / 255, 180 / 255, 180 / 255]).to(points.device)
         colors = pred_class[:, 0:1] * highlight_color + pred_class[:, 1:2] * base_color
 
-        # Create and render the colored point cloud
-        render_engine = renderer.setup_renderer()
-        point_cloud_colored = renderer.create_point_cloud(points, colors)
-        rendered_images = render_engine(point_cloud_colored)
+        # Create and render point cloud
+        point_cloud = renderer.create_point_cloud(points, colors)
+        rendered_images = renderer.render_all_views(point_cloud)
+        # Convert dictionary of images to tensor
+        rendered_tensor = []
+        for name, img in rendered_images.items():
+            rendered_tensor.append(img.to(device))
+        rendered_tensor = torch.stack(rendered_tensor)
 
-        # Properly format rendered images for saving
-        # Convert from [B, H, W, C] to [B, C, H, W]
-        rendered_images = rendered_images.permute(0, 3, 1, 2)
+        # Convert rendered images to CLIP format
+        rendered_images = rendered_tensor.permute(0, 3, 1, 2)  # [B, H, W, C] -> [B, C, H, W]
 
         # Convert to uint8 range [0, 255]
         rendered_images = (rendered_images * 255).clamp(0, 255).to(torch.uint8)
