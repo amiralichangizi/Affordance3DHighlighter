@@ -20,7 +20,9 @@ def save_renders(dir, i, rendered_images, name=None):
     if name is not None:
         torchvision.utils.save_image(rendered_images, os.path.join(dir, name))
     else:
-        torchvision.utils.save_image(rendered_images, os.path.join(dir, 'renders/iter_{}.jpg'.format(i)))
+        render_dir = os.path.join(dir, 'renders')
+        os.makedirs(render_dir, exist_ok=True)  # Create renders directory
+        torchvision.utils.save_image(rendered_images, os.path.join(render_dir, f'iter_{i}.jpg'))
 
 
 def save_results(net, points, point_cloud, prompt, output_dir, renderer):
