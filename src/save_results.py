@@ -25,18 +25,18 @@ def save_renders(dir, i, rendered_images, name=None):
         torchvision.utils.save_image(rendered_images, os.path.join(render_dir, f'iter_{i}.jpg'))
 
 
-def save_results(net, points, point_cloud, prompt, output_dir, renderer,device):
+def save_results(net, points, prompt, output_dir, renderer,device,n_views):
     """
     Saves the results of the highlighting process with proper image formatting.
 
     Args:
         net: Trained neural network
         points: Point cloud coordinates
-        point_cloud: PyTorch3D Pointclouds object
         prompt: Text prompt used
         output_dir: Directory to save results
         renderer: Point cloud renderer
-        device: GPU or CPU
+        device: GPU or CPU,
+        n_views: Number of views to render
     """
     with torch.no_grad():
         # Get highlight predictions
@@ -49,7 +49,7 @@ def save_results(net, points, point_cloud, prompt, output_dir, renderer,device):
 
         # Create and render point cloud
         point_cloud = renderer.create_point_cloud(points, colors)
-        rendered_images = renderer.render_all_views(point_cloud)
+        rendered_images = renderer.render_all_views(point_cloud,n_views)
         # Convert dictionary of images to tensor
         rendered_tensor = []
         for name, img in rendered_images.items():

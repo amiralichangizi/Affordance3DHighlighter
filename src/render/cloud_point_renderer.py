@@ -1,3 +1,5 @@
+from itertools import islice
+
 import torch
 from pytorch3d.structures import Pointclouds
 from pytorch3d.renderer import (
@@ -96,14 +98,17 @@ class MultiViewPointCloudRenderer:
         )
         return renderer
 
-    def render_all_views(self, point_cloud):
+    def render_all_views(self, point_cloud, n_views):
         """Render point cloud from all defined views"""
         images = {}
 
         # Calculate center point once
         center_point = self.get_center_point(point_cloud)
 
-        for view_name, (dist, elev, azim) in self.views.items():
+        if n_views > 6:
+            n_views = 6
+
+        for view_name, (dist, elev, azim) in islice(self.views.items(), n_views):
             renderer = self.create_renderer(dist, elev, azim, center_point)
             image = renderer(point_cloud)
             images[view_name] = image[0, ..., :3].cpu()
@@ -133,7 +138,7 @@ def load_point_cloud(file_path, device):
     return Pointclouds(points=[verts], features=[rgb])
 
 
-def render_point_cloud_views(point_cloud_file, image_size=512, if_plot=False):
+def render_point_cloud_views(point_cloud_file, image_size=512, if_plot=False,n_views=6):
     """Complete pipeline to load, render and display point cloud from all views"""
     # Setup device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -151,7 +156,7 @@ def render_point_cloud_views(point_cloud_file, image_size=512, if_plot=False):
     )
 
     # Render all views
-    rendered_images = renderer.render_all_views(point_cloud)
+    rendered_images = renderer.render_all_views(point_cloud,n_views)
 
     # Plot results
     if if_plot:
