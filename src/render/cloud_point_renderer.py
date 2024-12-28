@@ -156,7 +156,7 @@ def render_point_cloud_views(point_cloud_file, image_size=512, if_plot=False,n_v
     )
 
     # Render all views
-    rendered_images = renderer.render_all_views(point_cloud,n_views)
+    rendered_images = renderer.render_all_views(point_cloud=point_cloud, n_views=n_views)
 
     # Plot results
     if if_plot:
