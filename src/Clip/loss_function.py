@@ -1,5 +1,6 @@
 import torch
 
+
 def clip_loss(rendered_images, encoded_text, clip_transform, augment_transform, clip_model, n_augs=5, clipavg="view"):
     """
     Calculates the CLIP-based loss between rendered images and text description.
@@ -35,20 +36,20 @@ def clip_loss(rendered_images, encoded_text, clip_transform, augment_transform, 
             # Handle both single and multiple text embeddings
             if encoded_text.shape[0] > 1:
                 # Multiple text embeddings: average both image and text embeddings
-                loss = torch.cosine_similarity(
+                loss = -torch.cosine_similarity(
                     torch.mean(encoded_renders, dim=0),
                     torch.mean(encoded_text, dim=0),
                     dim=0
                 )
             else:
                 # Single text embedding: just average image embeddings
-                loss = torch.cosine_similarity(
+                loss = -torch.cosine_similarity(
                     torch.mean(encoded_renders, dim=0, keepdim=True),
                     encoded_text
                 )
         else:
             # Compare each view individually and average the similarities
-            loss = torch.mean(torch.cosine_similarity(encoded_renders, encoded_text))
+            loss = -torch.mean(torch.cosine_similarity(encoded_renders, encoded_text))
 
     # If augmentations requested, apply them and average results
     else:
