@@ -83,3 +83,41 @@ class FullShapeDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         return self.data_entries[idx]
+
+
+def create_dataset_splits(dataset, val_ratio=0.1, test_ratio=0.1, random_seed=42):
+    """
+    Split the dataset into train, validation and test sets.
+    Ensures balanced distribution of object classes across splits.
+    """
+    np.random.seed(random_seed)
+    
+    # Group entries by shape class
+    class_entries = {}
+    for entry in dataset.data_entries:
+        shape_class = entry['shape_class']
+        if shape_class not in class_entries:
+            class_entries[shape_class] = []
+        class_entries[shape_class].append(entry)
+    
+    train_data, val_data, test_data = [], [], []
+    
+    # Split each class proportionally
+    for shape_class, entries in class_entries.items():
+        n_samples = len(entries)
+        indices = np.random.permutation(n_samples)
+        
+        test_size = int(n_samples * test_ratio)
+        val_size = int(n_samples * val_ratio)
+        
+        # Split indices
+        test_idx = indices[:test_size]
+        val_idx = indices[test_size:test_size + val_size]
+        train_idx = indices[test_size + val_size:]
+        
+        # Add to respective splits
+        test_data.extend([entries[i] for i in test_idx])
+        val_data.extend([entries[i] for i in val_idx])
+        train_data.extend([entries[i] for i in train_idx])
+    
+    return train_data, val_data, test_data
