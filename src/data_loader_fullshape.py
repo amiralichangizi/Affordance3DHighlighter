@@ -25,12 +25,11 @@ class FullShapeDataset(torch.utils.data.Dataset):
         
         # Here we define the target household items and affordances
         self.target_classes = [
-            'TrashCan', 'Bottle', 'Bowl', 'Bed', 
-            'Table', 'Dishwasher', 'Door', 'Chair'
+            'Door'
         ]
         # Here we define the target affodance labels
         self.target_affordances = [
-            'grasp', 'push', 'pull', 'lift', 'move'
+            'openable','pushable','pull'
         ]
 
         # Load and process the .pkl data
