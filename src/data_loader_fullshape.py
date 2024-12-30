@@ -1,4 +1,3 @@
-
 import os
 import pickle
 import torch
@@ -34,49 +33,41 @@ class FullShapeDataset(torch.utils.data.Dataset):
             'grasp', 'push', 'pull', 'lift', 'move'
         ]
 
-        # Load the pkl data
+        # Load and process the .pkl data
         with open(pkl_path, 'rb') as f:
             raw_data = pickle.load(f)
+        
+        # Filter data entries for target classes and affordances
+        self.data_entries = [
+            self._process_entry(entry) for entry in raw_data
+            if entry['semantic class'] in self.target_classes and
+               any(aff in self.target_affordances for aff in entry['affordance'])
+        ]
+        if not self.data_entries:
+            print("Warning: No valid entries found in the dataset.")
 
-        # Filter and process the data
-        self.data_entries = []
-        for shape_entry in raw_data:
-            shape_id = shape_entry['shape_id']
-            shape_class = shape_entry['semantic class']
-            
-            # Only include target household items
-            if shape_class not in self.target_classes:
-                continue
-                
-            affordances = [aff for aff in shape_entry['affordance'] 
-                         if aff in self.target_affordances]
-            
-            if not affordances:  # Skip if no target affordances
-                continue
-            
-            # Full shape info
+    def _process_entry(self, shape_entry):
+        try:
             coords = shape_entry['full_shape']['coordinate']
             labels_dict = shape_entry['full_shape']['label']
 
-            # Convert to Torch
             coords_torch = torch.tensor(coords, device=self.device, dtype=torch.float32)
+            labels_dict_torch = {
+                aff_key: torch.tensor(label_array, device=self.device, dtype=torch.float32).view(-1)
+                for aff_key, label_array in labels_dict.items()
+                if aff_key in self.target_affordances
+            }
 
-            # Convert each label to Torch
-            labels_dict_torch = {}
-            for aff_key in affordances:
-                label_array = labels_dict[aff_key]
-                label_torch = torch.tensor(label_array, device=self.device, 
-                                         dtype=torch.float32).squeeze()
-                labels_dict_torch[aff_key] = label_torch
-
-            entry = {
-                'shape_id': shape_id,
-                'shape_class': shape_class,
-                'affordances': affordances,
+            return {
+                'shape_id': shape_entry['shape_id'],
+                'shape_class': shape_entry['semantic class'],
+                'affordances': [aff for aff in shape_entry['affordance'] if aff in self.target_affordances],
                 'coords': coords_torch,
                 'labels_dict': labels_dict_torch
             }
-            self.data_entries.append(entry)
+        except KeyError as e:
+            print(f"Missing key in entry {shape_entry.get('shape_id', 'unknown')}: {e}")
+            return None
 
     def __len__(self):
         return len(self.data_entries)
@@ -85,39 +76,32 @@ class FullShapeDataset(torch.utils.data.Dataset):
         return self.data_entries[idx]
 
 
+from torch.utils.data import Subset
+
 def create_dataset_splits(dataset, val_ratio=0.1, test_ratio=0.1, random_seed=42):
     """
-    Split the dataset into train, validation and test sets.
-    Ensures balanced distribution of object classes across splits.
+    Split the dataset into train, validation, and test subsets.
+    Args:
+        dataset (FullShapeDataset): The dataset to split.
+        val_ratio (float): Ratio of validation data.
+        test_ratio (float): Ratio of test data.
+        random_seed (int): Random seed for reproducibility.
+
+    Returns:
+        tuple: Subsets for train, validation, and test.
     """
     np.random.seed(random_seed)
-    
-    # Group entries by shape class
-    class_entries = {}
-    for entry in dataset.data_entries:
-        shape_class = entry['shape_class']
-        if shape_class not in class_entries:
-            class_entries[shape_class] = []
-        class_entries[shape_class].append(entry)
-    
-    train_data, val_data, test_data = [], [], []
-    
-    # Split each class proportionally
-    for shape_class, entries in class_entries.items():
-        n_samples = len(entries)
-        indices = np.random.permutation(n_samples)
-        
-        test_size = int(n_samples * test_ratio)
-        val_size = int(n_samples * val_ratio)
-        
-        # Split indices
-        test_idx = indices[:test_size]
-        val_idx = indices[test_size:test_size + val_size]
-        train_idx = indices[test_size + val_size:]
-        
-        # Add to respective splits
-        test_data.extend([entries[i] for i in test_idx])
-        val_data.extend([entries[i] for i in val_idx])
-        train_data.extend([entries[i] for i in train_idx])
-    
-    return train_data, val_data, test_data
+    indices = np.arange(len(dataset))
+    np.random.shuffle(indices)
+
+    n_total = len(dataset)
+    n_val = int(n_total * val_ratio)
+    n_test = int(n_total * test_ratio)
+    n_train = n_total - n_val - n_test
+
+    train_indices = indices[:n_train]
+    val_indices = indices[n_train:n_train + n_val]
+    test_indices = indices[n_train + n_val:]
+# returns subset for dataloader.
+    return Subset(dataset, train_indices), Subset(dataset, val_indices), Subset(dataset, test_indices)
+
