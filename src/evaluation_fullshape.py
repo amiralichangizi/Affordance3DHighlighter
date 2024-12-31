@@ -65,7 +65,7 @@ def evaluate_single_object(data_entry, net, clip_model, threshold=0.5, strategy=
 
 
 def grid_search_validation(val_dataset, net, clip_model, device='cuda',
-                           strategies=('basic','functional','descriptive','action','interactive'),
+                           strategies=('basic','affordance_specific','descriptive','action','interactive'),
                            thresholds=(0.3, 0.5, 0.7)):
     """
     Try combinations of strategies & thresholds on the ENTIRE validation set.

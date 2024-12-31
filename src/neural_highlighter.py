@@ -24,7 +24,7 @@ class NeuralHighlighter(nn.Module):
         layers.append(nn.Softmax(dim=1))
 
         self.mlp = nn.ModuleList(layers)
-        print(self.mlp)
+        # print(self.mlp)
     
     def forward(self, x):
         for layer in self.mlp:
