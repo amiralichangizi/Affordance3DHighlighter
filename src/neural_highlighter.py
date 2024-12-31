@@ -24,9 +24,12 @@ class NeuralHighlighter(nn.Module):
         layers.append(nn.Softmax(dim=1))
 
         self.mlp = nn.ModuleList(layers)
-        # print(self.mlp)
+        print(self.mlp)
     
     def forward(self, x):
         for layer in self.mlp:
             x = layer(x)
         return x
+    def __str__(self):
+        return f"NeuralHighlighter(depth={len(self.mlp)}, width={self.mlp[0].out_features if hasattr(self.mlp[0], 'out_features') else 'N/A'})"
+
