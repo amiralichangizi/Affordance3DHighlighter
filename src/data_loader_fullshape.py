@@ -4,44 +4,52 @@ import torch
 import numpy as np
 
 class FullShapeDataset(torch.utils.data.Dataset):
-    """
-    Loads the full-shape .pkl file and provides coordinate + label data for each object.
-    Focuses on common household items with following affordances:
-    - grasp: regions suitable for hand grasping
-    - push: areas that can be pushed
-    - pull: parts that can be pulled
-    - lift: regions used for lifting the object
-    - move: region for moving
-    
-    Each entry in the pkl is expected to have:
-      - shape_id
-      - semantic class
-      - affordance (list of strings)
-      - full_shape: { 'coordinate': Nx3 array, 'label': { 'grasp': Nx1 array, ... } }
-    """
     def __init__(self, pkl_path, device='cuda'):
         super().__init__()
         self.device = device
         
-        # Here we define the target household items and affordances
-        self.target_classes = [
-            'Door'
-        ]
-        # Here we define the target affodance labels
-        self.target_affordances = [
-            'openable','pushable','pull'
-        ]
+        # Target class and affordances remain the same
+        self.target_classes = ['Door']
+        self.target_affordances = ['openable', 'pushable', 'pull']
 
-        # Load and process the .pkl data
+        # Load data
         with open(pkl_path, 'rb') as f:
             raw_data = pickle.load(f)
         
-        # Filter data entries for target classes and affordances
-        self.data_entries = [
-            self._process_entry(entry) for entry in raw_data
-            if entry['semantic class'] in self.target_classes and
-               any(aff in self.target_affordances for aff in entry['affordance'])
-        ]
+        # Modified filtering logic
+        self.data_entries = []
+        for entry in raw_data:
+            # First check if it's a door
+            if entry['semantic class'] not in self.target_classes:
+                continue
+                
+            # Check if all required affordances are present
+            if not all(aff in entry['affordance'] for aff in self.target_affordances):
+                continue
+                
+            # Check if the labels for all affordances contain non-zero values
+            try:
+                labels = entry['full_shape']['label']
+                has_valid_labels = True
+                for aff in self.target_affordances:
+                    if aff not in labels:
+                        has_valid_labels = False
+                        break
+                    # Check if there are any non-zero labels for this affordance
+                    if not np.any(labels[aff]):
+                        has_valid_labels = False
+                        break
+                
+                if has_valid_labels:
+                    processed_entry = self._process_entry(entry)
+                    if processed_entry is not None:
+                        self.data_entries.append(processed_entry)
+                        
+            except KeyError as e:
+                print(f"Missing key in entry {entry.get('shape_id', 'unknown')}: {e}")
+                continue
+        
+        print(f"Found {len(self.data_entries)} valid door objects with all affordances")
         if not self.data_entries:
             print("Warning: No valid entries found in the dataset.")
 

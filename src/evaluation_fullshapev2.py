@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from .prompt_strategies import generate_affordance_prompt
 
+## This file is just for testing purposes 
+
 def compute_mIoU(pred_labels, gt_labels):
     """
     Compute Mean Intersection over Union for binary segmentation.
