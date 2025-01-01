@@ -325,31 +325,7 @@ def evaluate_single_object(data_entry, net, clip_model, threshold=0.5, strategy=
     return results
 
 
-def grid_search_validation(val_dataset, net, clip_model, device='cuda',
-                           strategies=('basic','affordance_specific','descriptive','action','interactive'),
-                           thresholds=(0.3, 0.5, 0.7)):
-    """
-    Try combinations of strategies & thresholds on the ENTIRE validation set.
-    Return (best_strategy, best_threshold) that yields highest average mIoU.
-    """
-    all_results = []
-    for strategy in strategies:
-        for th in thresholds:
-            iou_sum = 0.0
-            count   = 0
-            for idx in range(len(val_dataset)):
-                entry = val_dataset[idx]
-                single_res = evaluate_single_object(entry, net, clip_model, threshold=th, strategy=strategy, device=device)
-                for r in single_res:
-                    iou_sum += r['mIoU']
-                    count += 1
-            mean_iou = iou_sum / count if count>0 else 0.0
-            all_results.append((strategy, th, mean_iou))
 
-    # pick the best (strategy, threshold)
-    all_results.sort(key=lambda x: x[2], reverse=True)
-    best_strategy, best_threshold, best_mean_iou = all_results[0]
-    return best_strategy, best_threshold, best_mean_iou
 
 
 def evaluate_dataset(dataset, net, clip_model, strategy, threshold, device='cuda'):
