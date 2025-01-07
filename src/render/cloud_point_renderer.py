@@ -80,7 +80,7 @@ class MultiViewPointCloudRenderer:
         center = torch.mean(points, dim=0)
         return center.unsqueeze(0)  # Add batch dimension
 
-    def create_renderer(self, dist, elev, azim, center_point):
+    def create_renderer(self, dist, elev, azim, center_point,background_color=(0,0,0)):
         """Create a renderer for specific camera parameters"""
         # Use the center point as the 'at' parameter
         R, T = look_at_view_transform(
@@ -94,11 +94,11 @@ class MultiViewPointCloudRenderer:
         rasterizer = PointsRasterizer(cameras=cameras, raster_settings=self.raster_settings)
         renderer = PointsRenderer(
             rasterizer=rasterizer,
-            compositor=AlphaCompositor(background_color=(1, 1, 1))
+            compositor=AlphaCompositor(background_color=background_color)
         )
         return renderer
 
-    def render_all_views(self, point_cloud, n_views):
+    def render_all_views(self, point_cloud, n_views,background_color = (0,0,0)):
         """Render point cloud from all defined views"""
         images = {}
 
@@ -109,7 +109,7 @@ class MultiViewPointCloudRenderer:
             n_views = 6
 
         for view_name, (dist, elev, azim) in islice(self.views.items(), n_views):
-            renderer = self.create_renderer(dist, elev, azim, center_point)
+            renderer = self.create_renderer(dist, elev, azim, center_point,background_color)
             image = renderer(point_cloud)
             images[view_name] = image[0, ..., :3].cpu()
 

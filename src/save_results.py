@@ -49,7 +49,7 @@ def save_results(net, points, prompt, output_dir, renderer,device,n_views):
 
         # Create and render point cloud
         point_cloud = renderer.create_point_cloud(points, colors)
-        rendered_images = renderer.render_all_views(point_cloud=point_cloud, n_views=n_views)
+        rendered_images = renderer.render_all_views(point_cloud=point_cloud, n_views=n_views,background_color = (1,1,1))
         # Convert dictionary of images to tensor
         rendered_tensor = []
         for name, img in rendered_images.items():
