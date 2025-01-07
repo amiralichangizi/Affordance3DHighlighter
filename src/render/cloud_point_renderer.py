@@ -31,7 +31,7 @@ class PointCloudRenderer:
         rasterizer = PointsRasterizer(cameras=cameras, raster_settings=self.raster_settings)
         renderer = PointsRenderer(
             rasterizer=rasterizer,
-            compositor=AlphaCompositor()
+            compositor=AlphaCompositor(background_color=(1, 1, 1))
         )
         return renderer
 
@@ -94,7 +94,7 @@ class MultiViewPointCloudRenderer:
         rasterizer = PointsRasterizer(cameras=cameras, raster_settings=self.raster_settings)
         renderer = PointsRenderer(
             rasterizer=rasterizer,
-            compositor=AlphaCompositor()
+            compositor=AlphaCompositor(background_color=(1, 1, 1))
         )
         return renderer
 
