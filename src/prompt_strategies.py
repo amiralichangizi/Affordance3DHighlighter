@@ -4,19 +4,12 @@ def generate_affordance_prompt(shape_class, affordance_type, strategy="basic"):
     
     Strategies:
     - basic: Simple highlighting prompt
-    - functional: Focuses on human interaction
-    - descriptive: More detailed description
     - action: Emphasizes the action possibility
-    - interactive: Focuses on interaction regions
     - affordance_specific: Adds context specific to the affordance
-    - utility: Describes the object's practical use with the affordance
     """
     prompts = {
         "basic": f"A 3D render of a gray {shape_class} with highlighted {affordance_type} regions",
-        "functional": f"A 3D render of a gray {shape_class} showing where a person might {affordance_type} it",
-        "descriptive": f"A detailed 3D render of a gray {shape_class} with its {affordance_type}-enabled parts highlighted",
         "action": f"A 3D render indicating the parts of the gray {shape_class} that can be used to {affordance_type}",
-        "interactive": f"A 3D visualization of a gray {shape_class} highlighting regions where {affordance_type} interaction is possible",
         "affordance_specific": {
             "openable": f"A 3D render of a gray {shape_class} with highlighted hinge regions and handle areas that enable opening movement",
             "pushable": f"A 3D render of a gray {shape_class} with highlighted flat surface regions designed for pushing",
@@ -25,7 +18,7 @@ def generate_affordance_prompt(shape_class, affordance_type, strategy="basic"):
             "support": f"A 3D visualization of a gray {shape_class} showing parts that provide structural support",
             "pourable": f"A 3D render of a gray {shape_class} showing regions designed for pouring",
             "sittable": f"A 3D visualization of a gray {shape_class} indicating areas suitable for sitting",
-            "cut": f"A 3D render of a gray {shape_class} highlighting regions designed for cutting",
+            "cut": f"A 3D render of a gray {shape_class} with highlighted regions showing the sharp blade edge and cutting tip, emphasizing the main cutting surface and pointed end",
             "stab": f"A 3D render of a gray {shape_class} emphasizing parts designed for stabbing",
             "press": f"A 3D render of a gray {shape_class} showing areas designed for pressing",
             "wear": f"A 3D visualization of a gray {shape_class} showing parts designed to be worn",
