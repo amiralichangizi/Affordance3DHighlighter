@@ -14,34 +14,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-class PointCloudRenderer:
-    def __init__(self, image_size=512, radius=0.003, points_per_pixel=10, device="cuda"):
-        self.device = device
-        # Initialize renderer settings
-        self.raster_settings = PointsRasterizationSettings(
-            image_size=image_size,
-            radius=radius,
-            points_per_pixel=points_per_pixel
-        )
-
-    def setup_renderer(self, R=None, T=None):
-        if R is None or T is None:
-            R, T = look_at_view_transform(20, 10, 0)
-        cameras = FoVOrthographicCameras(device=self.device, R=R, T=T, znear=0.01)
-        rasterizer = PointsRasterizer(cameras=cameras, raster_settings=self.raster_settings)
-        renderer = PointsRenderer(
-            rasterizer=rasterizer,
-            compositor=AlphaCompositor(background_color=(1, 1, 1))
-        )
-        return renderer
-
-    @staticmethod
-    def create_point_cloud(points, colors=None):
-        if colors is None:
-            colors = torch.ones_like(points)  # Default white color
-        return Pointclouds(points=[points], features=[colors])
-
-
 class MultiViewPointCloudRenderer:
     def __init__(self, image_size=512, base_dist=20, base_elev=10, base_azim=0,
                  device=torch.device("cuda" if torch.cuda.is_available() else "cpu")):
@@ -98,20 +70,29 @@ class MultiViewPointCloudRenderer:
         )
         return renderer
 
-    def render_all_views(self, point_cloud, n_views,background_color = (0,0,0)):
-        """Render point cloud from all defined views"""
+    def render_all_views(self, point_cloud, n_views=6, background_image=None):
         images = {}
-
-        # Calculate center point once
         center_point = self.get_center_point(point_cloud)
 
         if n_views > 6:
             n_views = 6
 
         for view_name, (dist, elev, azim) in islice(self.views.items(), n_views):
-            renderer = self.create_renderer(dist, elev, azim, center_point,background_color)
+            renderer = self.create_renderer(dist, elev, azim, center_point)
             image = renderer(point_cloud)
-            images[view_name] = image[0, ..., :3].cpu()
+
+            if background_image is not None:
+                # Convert background to same device as rendered image
+                background = background_image.to(image.device)
+
+                # Create alpha mask from point cloud
+                alpha_mask = (image[0, ..., 3:] > 0).float()
+
+                # Composite rendered points over background
+                composite = (image[0, ..., :3] * alpha_mask) + (background * (1 - alpha_mask))
+                images[view_name] = composite
+            else:
+                images[view_name] = image[0, ..., :3]
 
         return images
 
