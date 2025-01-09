@@ -81,7 +81,7 @@ class MultiViewPointCloudRenderer:
         bg_tensor = self.to_tensor(bg_image).to(self.device)
         return bg_tensor.permute(1, 2, 0)  # Convert to HWC format
 
-    def render_all_views(self, point_cloud, n_views=6, background_path=None):
+    def render_all_views(self, point_cloud, n_views=6, background_path=None,background_color = (0,0,0)):
         images = {}
         center_point = self.get_center_point(point_cloud)
 
@@ -91,7 +91,7 @@ class MultiViewPointCloudRenderer:
             background = None
 
         for view_name, (dist, elev, azim) in islice(self.views.items(), n_views):
-            renderer = self.create_renderer(dist, elev, azim, center_point)
+            renderer = self.create_renderer(dist, elev, azim, center_point,background_color = (0,0,0))
             image = renderer(point_cloud)
 
             if background is not None:
