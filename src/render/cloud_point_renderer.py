@@ -58,7 +58,7 @@ class MultiViewPointCloudRenderer:
         center = torch.mean(points, dim=0)
         return center.unsqueeze(0)  # Add batch dimension
 
-    def create_renderer(self, dist, elev, azim, center_point,background_color=(0,0,0)):
+    def create_renderer(self, dist, elev, azim, center_point, background_color=(0, 0, 0)):
         """Create a renderer for specific camera parameters"""
         # Use the center point as the 'at' parameter
         R, T = look_at_view_transform(
@@ -81,7 +81,7 @@ class MultiViewPointCloudRenderer:
         bg_tensor = self.to_tensor(bg_image).to(self.device)
         return bg_tensor.permute(1, 2, 0)  # Convert to HWC format
 
-    def render_all_views(self, point_cloud, n_views=6, background_path=None,background_color = (0,0,0)):
+    def render_all_views(self, point_cloud, n_views=6, background_path=None,background_color=(0, 0, 0)):
         images = {}
         center_point = self.get_center_point(point_cloud)
 
@@ -91,12 +91,14 @@ class MultiViewPointCloudRenderer:
             background = None
 
         for view_name, (dist, elev, azim) in islice(self.views.items(), n_views):
-            renderer = self.create_renderer(dist, elev, azim, center_point,background_color = (0,0,0))
+            renderer = self.create_renderer(dist, elev, azim, center_point,background_color=background_color)
             image = renderer(point_cloud)
 
             if background is not None:
-                alpha_mask = (image[0, ..., 3:] > 0).float()
-                composite = (image[0, ..., :3] * alpha_mask) + (background * (1 - alpha_mask))
+                # Create binary mask from points
+                mask = torch.any(image[0, ..., :3] > 0, dim=-1).float()
+                mask = mask.unsqueeze(-1).expand(-1, -1, 3)
+                composite = (image[0, ..., :3] * mask) + (background * (1 - mask))
                 images[view_name] = composite
             else:
                 images[view_name] = image[0, ..., :3]
@@ -126,7 +128,7 @@ def load_point_cloud(file_path, device):
     return Pointclouds(points=[verts], features=[rgb])
 
 
-def render_point_cloud_views(point_cloud_file, image_size=512, if_plot=False,n_views=6):
+def render_point_cloud_views(point_cloud_file, image_size=512, if_plot=False, n_views=6):
     """Complete pipeline to load, render and display point cloud from all views"""
     # Setup device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
