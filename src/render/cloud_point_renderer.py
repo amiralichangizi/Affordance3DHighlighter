@@ -12,6 +12,8 @@ from pytorch3d.renderer import (
 )
 import matplotlib.pyplot as plt
 import numpy as np
+from PIL import Image
+import torchvision.transforms as T
 
 
 class MultiViewPointCloudRenderer:
@@ -22,6 +24,10 @@ class MultiViewPointCloudRenderer:
         self.base_dist = base_dist
         self.base_elev = base_elev
         self.base_azim = base_azim
+        self.to_tensor = T.Compose([
+            T.Resize((image_size, image_size)),
+            T.ToTensor()
+        ])
 
         # Define the settings for rasterization
         self.raster_settings = PointsRasterizationSettings(
@@ -70,25 +76,26 @@ class MultiViewPointCloudRenderer:
         )
         return renderer
 
-    def render_all_views(self, point_cloud, n_views=6, background_image=None):
+    def load_background(self, background_path):
+        bg_image = Image.open(background_path)
+        bg_tensor = self.to_tensor(bg_image).to(self.device)
+        return bg_tensor.permute(1, 2, 0)  # Convert to HWC format
+
+    def render_all_views(self, point_cloud, n_views=6, background_path=None):
         images = {}
         center_point = self.get_center_point(point_cloud)
 
-        if n_views > 6:
-            n_views = 6
+        if background_path:
+            background = self.load_background(background_path)
+        else:
+            background = None
 
         for view_name, (dist, elev, azim) in islice(self.views.items(), n_views):
             renderer = self.create_renderer(dist, elev, azim, center_point)
             image = renderer(point_cloud)
 
-            if background_image is not None:
-                # Convert background to same device as rendered image
-                background = background_image.to(image.device)
-
-                # Create alpha mask from point cloud
+            if background is not None:
                 alpha_mask = (image[0, ..., 3:] > 0).float()
-
-                # Composite rendered points over background
                 composite = (image[0, ..., :3] * alpha_mask) + (background * (1 - alpha_mask))
                 images[view_name] = composite
             else:
