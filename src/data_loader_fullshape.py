@@ -9,8 +9,8 @@ class FullShapeDataset(torch.utils.data.Dataset):
         self.device = device
         
         # Target class and affordances remain the same
-        self.target_classes = ['Knife']
-        self.target_affordances = ['cut']
+        self.target_classes = ['Bottle', 'Vase', 'Bowl']
+        self.target_affordances = ['contain']
 
         # Load data
         with open(pkl_path, 'rb') as f:
