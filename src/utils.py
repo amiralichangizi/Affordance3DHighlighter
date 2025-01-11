@@ -94,3 +94,14 @@ class FourierFeatureTransform(torch.nn.Module):
 
         res = 2 * np.pi * res
         return torch.cat([x, torch.sin(res), torch.cos(res)], dim=1)
+
+def compute_mIoU(pred_labels, gt_labels):
+    """
+    Compute Mean Intersection over Union for binary segmentation.
+    """
+    intersection = ((pred_labels == 1) & (gt_labels == 1)).sum().float() # the num of points correctly predicted as belonging to affordance.
+    union = ((pred_labels == 1) | (gt_labels == 1)).sum().float() # the total num of points predicted belonging to an affordance or actually belonging to it.
+    if union == 0:
+        return 0.0
+    iou = intersection / union
+    return iou.item()

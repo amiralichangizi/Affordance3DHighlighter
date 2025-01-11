@@ -5,8 +5,8 @@ import numpy as np
 
 
 class FullShapeDataset(torch.utils.data.Dataset):
-    def __init__(self, pkl_path, device='cuda', target_classes=['Bottle', 'Vase', 'Bowl'],
-                 target_affordances=['contain']):
+    def __init__(self, pkl_path, device='cuda', target_classes=['Knife'],
+                 target_affordances=['cut']):
         super().__init__()
         self.device = device
 
