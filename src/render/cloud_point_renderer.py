@@ -5,6 +5,7 @@ from pytorch3d.structures import Pointclouds
 from pytorch3d.renderer import (
     look_at_view_transform,
     FoVOrthographicCameras,
+    FoVPerspectiveCameras,
     PointsRasterizationSettings,
     PointsRenderer,
     PointsRasterizer,
@@ -12,50 +13,31 @@ from pytorch3d.renderer import (
 )
 import matplotlib.pyplot as plt
 import numpy as np
-
-
-class PointCloudRenderer:
-    def __init__(self, image_size=512, radius=0.003, points_per_pixel=10, device="cuda"):
-        self.device = device
-        # Initialize renderer settings
-        self.raster_settings = PointsRasterizationSettings(
-            image_size=image_size,
-            radius=radius,
-            points_per_pixel=points_per_pixel
-        )
-
-    def setup_renderer(self, R=None, T=None):
-        if R is None or T is None:
-            R, T = look_at_view_transform(20, 10, 0)
-        cameras = FoVOrthographicCameras(device=self.device, R=R, T=T, znear=0.01)
-        rasterizer = PointsRasterizer(cameras=cameras, raster_settings=self.raster_settings)
-        renderer = PointsRenderer(
-            rasterizer=rasterizer,
-            compositor=AlphaCompositor(background_color=(1, 1, 1))
-        )
-        return renderer
-
-    @staticmethod
-    def create_point_cloud(points, colors=None):
-        if colors is None:
-            colors = torch.ones_like(points)  # Default white color
-        return Pointclouds(points=[points], features=[colors])
+from PIL import Image
+import torchvision.transforms as T
 
 
 class MultiViewPointCloudRenderer:
-    def __init__(self, image_size=512, base_dist=20, base_elev=10, base_azim=0,
-                 device=torch.device("cuda" if torch.cuda.is_available() else "cpu")):
+    def __init__(self, camera_type="Orthographic", image_size=512, base_dist=20, base_elev=10, base_azim=0,
+                 device=torch.device("cuda" if torch.cuda.is_available() else "cpu"), **kwargs):
         self.device = device
         self.image_size = image_size
         self.base_dist = base_dist
         self.base_elev = base_elev
         self.base_azim = base_azim
+        self.to_tensor = T.Compose([
+            T.Resize((image_size, image_size)),
+            T.ToTensor()
+        ])
+        self.point_radius = kwargs.get("point_radius", 0.003)
+        self.point_per_pixel = kwargs.get("point_per_pixel", 10)
+        self.camera_type = camera_type
 
         # Define the settings for rasterization
         self.raster_settings = PointsRasterizationSettings(
             image_size=image_size,
-            radius=0.003,
-            points_per_pixel=10
+            radius=self.point_radius,
+            points_per_pixel=self.point_per_pixel
         )
 
         # Define all views relative to base view
@@ -80,7 +62,7 @@ class MultiViewPointCloudRenderer:
         center = torch.mean(points, dim=0)
         return center.unsqueeze(0)  # Add batch dimension
 
-    def create_renderer(self, dist, elev, azim, center_point,background_color=(0,0,0)):
+    def create_renderer(self, dist, elev, azim, center_point, background_color=(0, 0, 0)):
         """Create a renderer for specific camera parameters"""
         # Use the center point as the 'at' parameter
         R, T = look_at_view_transform(
@@ -89,7 +71,10 @@ class MultiViewPointCloudRenderer:
             azim=azim,
             at=center_point,  # Look at the center of the point cloud
         )
-        cameras = FoVOrthographicCameras(device=self.device, R=R, T=T, znear=0.01)
+        if self.camera_type == 'Orthographic':
+            cameras = FoVOrthographicCameras(device=self.device, R=R, T=T, znear=0.01)
+        else:
+            cameras = FoVPerspectiveCameras(device=self.device, R=R, T=T)
 
         rasterizer = PointsRasterizer(cameras=cameras, raster_settings=self.raster_settings)
         renderer = PointsRenderer(
@@ -98,20 +83,32 @@ class MultiViewPointCloudRenderer:
         )
         return renderer
 
-    def render_all_views(self, point_cloud, n_views,background_color = (0,0,0)):
-        """Render point cloud from all defined views"""
-        images = {}
+    def load_background(self, background_path):
+        bg_image = Image.open(background_path)
+        bg_tensor = self.to_tensor(bg_image).to(self.device)
+        return bg_tensor.permute(1, 2, 0)  # Convert to HWC format
 
-        # Calculate center point once
+    def render_all_views(self, point_cloud, n_views=6, background_path=None, background_color=(0, 0, 0)):
+        images = {}
         center_point = self.get_center_point(point_cloud)
 
-        if n_views > 6:
-            n_views = 6
+        if background_path:
+            background = self.load_background(background_path)
+        else:
+            background = None
 
         for view_name, (dist, elev, azim) in islice(self.views.items(), n_views):
-            renderer = self.create_renderer(dist, elev, azim, center_point,background_color)
+            renderer = self.create_renderer(dist, elev, azim, center_point, background_color=background_color)
             image = renderer(point_cloud)
-            images[view_name] = image[0, ..., :3].cpu()
+
+            if background is not None:
+                # Create binary mask from points
+                mask = torch.any(image[0, ..., :3] > 0, dim=-1).float()
+                mask = mask.unsqueeze(-1).expand(-1, -1, 3)
+                composite = (image[0, ..., :3] * mask) + (background * (1 - mask))
+                images[view_name] = composite
+            else:
+                images[view_name] = image[0, ..., :3]
 
         return images
 
@@ -138,7 +135,7 @@ def load_point_cloud(file_path, device):
     return Pointclouds(points=[verts], features=[rgb])
 
 
-def render_point_cloud_views(point_cloud_file, image_size=512, if_plot=False,n_views=6):
+def render_point_cloud_views(point_cloud_file, image_size=512, if_plot=False, n_views=6):
     """Complete pipeline to load, render and display point cloud from all views"""
     # Setup device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

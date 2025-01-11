@@ -3,30 +3,32 @@ import pickle
 import torch
 import numpy as np
 
+
 class FullShapeDataset(torch.utils.data.Dataset):
-    def __init__(self, pkl_path, device='cuda'):
+    def __init__(self, pkl_path, device='cuda', target_classes=['Bottle', 'Vase', 'Bowl'],
+                 target_affordances=['contain']):
         super().__init__()
         self.device = device
-        
+
         # Target class and affordances remain the same
-        self.target_classes = ['Knife']
-        self.target_affordances = ['cut']
+        self.target_classes = target_classes
+        self.target_affordances = target_affordances
 
         # Load data
         with open(pkl_path, 'rb') as f:
             raw_data = pickle.load(f)
-        
+
         # Modified filtering logic
         self.data_entries = []
         for entry in raw_data:
-            # First check if it's a door
+            # First check if it's a target_classes
             if entry['semantic class'] not in self.target_classes:
                 continue
-                
+
             # Check if all required affordances are present
             if not all(aff in entry['affordance'] for aff in self.target_affordances):
                 continue
-                
+
             # Check if the labels for all affordances contain non-zero values
             try:
                 labels = entry['full_shape']['label']
@@ -39,17 +41,18 @@ class FullShapeDataset(torch.utils.data.Dataset):
                     if not np.any(labels[aff]):
                         has_valid_labels = False
                         break
-                
+
                 if has_valid_labels:
                     processed_entry = self._process_entry(entry)
                     if processed_entry is not None:
                         self.data_entries.append(processed_entry)
-                        
+
             except KeyError as e:
                 print(f"Missing key in entry {entry.get('shape_id', 'unknown')}: {e}")
                 continue
-        
-        print(f"Found {len(self.data_entries)} valid door objects with all affordances")
+
+        print(
+            f"Found {len(self.data_entries)} valid {self.target_classes} objects with all affordances {self.target_affordances}")
         if not self.data_entries:
             print("Warning: No valid entries found in the dataset.")
 
@@ -70,13 +73,14 @@ class FullShapeDataset(torch.utils.data.Dataset):
                 for aff_key, label_array in labels_dict.items()
                 if aff_key in self.target_affordances
             }
-        # here 
+            # here
             return {
-                'shape_id': shape_entry['shape_id'], #unique identifier for obj
-                'shape_class': shape_entry['semantic class'], # semantic class of obj (door)
-                'affordances': [aff for aff in shape_entry['affordance'] if aff in self.target_affordances], # list aff that apply to this obj
-                'coords': coords_torch, # 3d coordinates of point cloud as tensor
-                'labels_dict': labels_dict_torch # affordance labels for objs point cloud. 
+                'shape_id': shape_entry['shape_id'],  # unique identifier for obj
+                'shape_class': shape_entry['semantic class'],  # semantic class of obj
+                'affordances': [aff for aff in shape_entry['affordance'] if aff in self.target_affordances],
+                # list aff that apply to this obj
+                'coords': coords_torch,  # 3d coordinates of point cloud as tensor
+                'labels_dict': labels_dict_torch  # affordance labels for objs point cloud.
             }
         except KeyError as e:
             print(f"Missing key in entry {shape_entry.get('shape_id', 'unknown')}: {e}")
@@ -90,6 +94,7 @@ class FullShapeDataset(torch.utils.data.Dataset):
 
 
 from torch.utils.data import Subset
+
 
 def create_dataset_splits(dataset, val_ratio=0.1, test_ratio=0.05, random_seed=42):
     """
@@ -105,16 +110,15 @@ def create_dataset_splits(dataset, val_ratio=0.1, test_ratio=0.05, random_seed=4
     """
     np.random.seed(random_seed)
     indices = np.arange(len(dataset))
-    np.random.shuffle(indices) # shuffle the indices 
+    np.random.shuffle(indices)  # shuffle the indices
 
     n_total = len(dataset)
-    n_val = int(n_total * val_ratio) # num of samples in validation set
-    n_test = int(n_total * test_ratio) # num of samples in test set
+    n_val = int(n_total * val_ratio)  # num of samples in validation set
+    n_test = int(n_total * test_ratio)  # num of samples in test set
     n_train = n_total - n_val - n_test
 
     train_indices = indices[:n_train]
     val_indices = indices[n_train:n_train + n_val]
     test_indices = indices[n_train + n_val:]
-# returns subset for dataloader.
+    # returns subset for dataloader.
     return Subset(dataset, train_indices), Subset(dataset, val_indices), Subset(dataset, test_indices)
-
