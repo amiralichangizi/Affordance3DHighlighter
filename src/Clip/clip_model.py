@@ -50,8 +50,100 @@ def encode_text(clip_model, prompt, device):
         return text_features
 
 
+def balanced_transform(clip_mean,clip_std,resolution=224):
 
-def setup_clip_transforms(resolution=224):
+    augment_transform = transforms.Compose([
+        transforms.RandomResizedCrop(resolution, scale=(0.95, 1.0)),  # Slight cropping
+        transforms.RandomPerspective(fill=1, p=0.7, distortion_scale=0.3),  # Moderate perspective
+        transforms.ColorJitter(brightness=0.1, contrast=0.1),  # Subtle color variation
+        transforms.Normalize(clip_mean, clip_std)
+    ])
+    return augment_transform
+
+def lighting_transform(clip_mean,clip_std,resolution=224):
+
+    augment_transform = transforms.Compose([
+        transforms.RandomResizedCrop(resolution, scale=(0.9, 1.0)),
+        transforms.RandomPerspective(fill=1, p=0.7, distortion_scale=0.4),
+        transforms.ColorJitter(
+            brightness=0.2,  # More brightness variation
+            contrast=0.2,  # More contrast variation
+            saturation=0.1,  # Slight saturation changes
+        ),
+        transforms.RandomGrayscale(p=0.05),  # Occasional grayscale
+        transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 0.5)),  # Slight blur
+        transforms.Normalize(clip_mean, clip_std)
+    ])
+    return augment_transform
+
+def viewpoint_transform(clip_mean,clip_std,resolution=224):
+
+    augment_transform = transforms.Compose([
+        transforms.RandomAffine(
+            degrees=15,  # Rotation up to 15 degrees
+            translate=(0.1, 0.1),  # Translation up to 10%
+            scale=(0.9, 1.1),  # Scale variation ±10%
+        ),
+        transforms.RandomPerspective(fill=1, p=0.9, distortion_scale=0.6),  # Stronger perspective
+        transforms.RandomHorizontalFlip(p=0.3),  # Occasional flipping for symmetrical objects
+        transforms.Normalize(clip_mean, clip_std)
+    ])
+    return augment_transform
+
+def default_transform(clip_mean,clip_std,resolution=224):
+
+    augment_transform = transforms.Compose([
+        transforms.RandomResizedCrop(resolution, scale=(1, 1)),
+        transforms.RandomPerspective(fill=1, p=0.8, distortion_scale=0.5),
+        transforms.Normalize(clip_mean, clip_std)
+    ])
+    return augment_transform
+
+def get_all_transforms(clip_mean,clip_std,resolution=224):
+    transforms_dict = {
+        'balanced': balanced_transform(clip_mean,clip_std,resolution),
+        'viewpoint': viewpoint_transform(clip_mean,clip_std,resolution),
+        'lighting': lighting_transform(clip_mean,clip_std,resolution),
+        'default': default_transform(clip_mean,clip_std,resolution),
+    }
+    return transforms_dict
+
+# Parameter grid for experimentation
+param_grid = {
+    'balanced': {
+        'crop_scale': [(0.95, 1.0), (0.9, 1.0)],
+        'perspective_scale': [0.3, 0.4],
+        'color_strength': [0.1, 0.2]
+    },
+    'viewpoint': {
+        'rotation_degrees': [10, 15, 20],
+        'translate_range': [(0.1, 0.1), (0.2, 0.2)],
+        'perspective_scale': [0.5, 0.6]
+    },
+    'lighting': {
+        'brightness': [0.1, 0.2],
+        'contrast': [0.1, 0.2],
+        'blur_sigma': [(0.1, 0.5), (0.2, 0.7)]
+    }
+}
+#TODO (OPTIONAL)
+# Function to create transform with specific parameters
+def get_transform_with_params(strategy, params, resolution):
+    # CLIP's normalization values
+    clip_mean = (0.48145466, 0.4578275, 0.40821073)
+    clip_std = (0.26862954, 0.26130258, 0.27577711)
+
+    if strategy == 'balanced':
+        return transforms.Compose([
+            transforms.RandomResizedCrop(resolution, scale=params['crop_scale']),
+            transforms.RandomPerspective(fill=1, p=0.7, distortion_scale=params['perspective_scale']),
+            transforms.ColorJitter(brightness=params['color_strength'], contrast=params['color_strength']),
+            transforms.Normalize(clip_mean, clip_std)
+        ])
+    # Add similar for other strategies...
+
+
+def setup_clip_transforms(resolution=224,augumentation_type = "default"):
     """
     Creates the transformation pipelines needed for CLIP processing.
 
@@ -72,10 +164,6 @@ def setup_clip_transforms(resolution=224):
     ])
 
     # Augmentation transform - adds random perturbations
-    augment_transform = transforms.Compose([
-        transforms.RandomResizedCrop(resolution, scale=(1, 1)),
-        transforms.RandomPerspective(fill=1, p=0.8, distortion_scale=0.5),
-        transforms.Normalize(clip_mean, clip_std)
-    ])
+    augment_transform = get_all_transforms(clip_mean,clip_std,resolution)[augumentation_type]
 
     return clip_transform, augment_transform
