@@ -25,7 +25,7 @@ def save_renders(dir, i, rendered_images, name=None):
         torchvision.utils.save_image(rendered_images, os.path.join(render_dir, f'iter_{i}.jpg'))
 
 
-def save_results(net, points, prompt, output_dir, renderer,device,n_views,background_path):
+def save_results(net, points, prompt, output_dir, renderer,device,n_views,background_path=None):
     """
     Saves the results of the highlighting process with proper image formatting.
 
